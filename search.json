@@ -1,0 +1,342 @@
+[
+  {
+    "objectID": "ivf_index.html",
+    "href": "ivf_index.html",
+    "title": "IVF Index: Making Vector Search Fast",
+    "section": "",
+    "text": "To find similar vectors, we need ways to measure how “close” or “far apart” they are. Different distance functions capture different types of similarity:\n\nsource\n\n\n\n vers (a, b)\n\n\n\n\n\nDetails\n\n\n\n\na\n\n\n\nb\n1 - cosine\n\n\n\n\nv1 = np.array([1, 0, 0])       \nv2 = np.array([0, 1, 0])\nv3 = np.array([-0.5, -0.5, 0])\n\nquery = np.array([0.7, 0.7, 0]) \nvers(v1, query), vers(v2, query), vers(v3, query)\n\n(np.float64(0.2928932259563096),\n np.float64(0.2928932259563096),\n np.float64(1.9999999857142858))\n\n\n\nsource\n\n\n\n\n euclidean (a, b)\n\n\neuclidean(v1, query), euclidean(v2, query), euclidean(v3, query)\n\n(np.float64(0.7615773105863908),\n np.float64(0.7615773105863908),\n np.float64(1.697056274847714))\n\n\n\nsource\n\n\n\n\n neg_dot (a, b)\n\n\n\n\n\nDetails\n\n\n\n\na\n\n\n\nb\nnegative dot\n\n\n\n\nneg_dot(v1, query), neg_dot(v2, query), neg_dot(v3, query)\n\n(np.float64(-0.7), np.float64(-0.7), np.float64(0.7))\n\n\nDifferent distance functions are better for different tasks:\n\nCosine: Best for semantic similarity when vector size doesn’t matter\nEuclidean: Best when absolute positions in vector space matter\nDot Product: Good for normalized vectors (all same length)\n\nOur examples show how these measures rank similarity differently for the same vectors.",
+    "crumbs": [
+      "IVF Index: Making Vector Search Fast"
+    ]
+  },
+  {
+    "objectID": "ivf_index.html#distance-functions-how-we-measure-similarity",
+    "href": "ivf_index.html#distance-functions-how-we-measure-similarity",
+    "title": "IVF Index: Making Vector Search Fast",
+    "section": "",
+    "text": "To find similar vectors, we need ways to measure how “close” or “far apart” they are. Different distance functions capture different types of similarity:\n\nsource\n\n\n\n vers (a, b)\n\n\n\n\n\nDetails\n\n\n\n\na\n\n\n\nb\n1 - cosine\n\n\n\n\nv1 = np.array([1, 0, 0])       \nv2 = np.array([0, 1, 0])\nv3 = np.array([-0.5, -0.5, 0])\n\nquery = np.array([0.7, 0.7, 0]) \nvers(v1, query), vers(v2, query), vers(v3, query)\n\n(np.float64(0.2928932259563096),\n np.float64(0.2928932259563096),\n np.float64(1.9999999857142858))\n\n\n\nsource\n\n\n\n\n euclidean (a, b)\n\n\neuclidean(v1, query), euclidean(v2, query), euclidean(v3, query)\n\n(np.float64(0.7615773105863908),\n np.float64(0.7615773105863908),\n np.float64(1.697056274847714))\n\n\n\nsource\n\n\n\n\n neg_dot (a, b)\n\n\n\n\n\nDetails\n\n\n\n\na\n\n\n\nb\nnegative dot\n\n\n\n\nneg_dot(v1, query), neg_dot(v2, query), neg_dot(v3, query)\n\n(np.float64(-0.7), np.float64(-0.7), np.float64(0.7))\n\n\nDifferent distance functions are better for different tasks:\n\nCosine: Best for semantic similarity when vector size doesn’t matter\nEuclidean: Best when absolute positions in vector space matter\nDot Product: Good for normalized vectors (all same length)\n\nOur examples show how these measures rank similarity differently for the same vectors.",
+    "crumbs": [
+      "IVF Index: Making Vector Search Fast"
+    ]
+  },
+  {
+    "objectID": "ivf_index.html#understanding-k-means-clustering",
+    "href": "ivf_index.html#understanding-k-means-clustering",
+    "title": "IVF Index: Making Vector Search Fast",
+    "section": "Understanding K-means Clustering",
+    "text": "Understanding K-means Clustering\nK-means clustering is an algorithm that groups similar data points by iteratively assigning points to the nearest of K centers, then updating those centers based on the assigned points. The FastKMeans library we’re using optimizes this process through efficient distance calculations and smarter initialization, which helps our IVF Index group similar vectors into clusters – allowing us to search just a few promising clusters rather than the entire database, dramatically improving search speed as our collection grows.\n\nsource\n\nrun_kmeans\n\n run_kmeans (data)\n\n\ncentroids, preds = run_kmeans(np.random.randn(20, 768))\ncentroids.shape, preds.shape\n\n((3, 768), (20,))",
+    "crumbs": [
+      "IVF Index: Making Vector Search Fast"
+    ]
+  },
+  {
+    "objectID": "ivf_index.html#building-the-index",
+    "href": "ivf_index.html#building-the-index",
+    "title": "IVF Index: Making Vector Search Fast",
+    "section": "Building the Index",
+    "text": "Building the Index\nThe key to the IVF approach is dividing vectors into clusters. We’ll use K-means clustering, which:\n\nRandomly selects initial cluster centers\nAssigns each vector to the nearest center\nRecalculates centers based on assigned vectors\nRepeats until convergence\n\nOur build_index function handles this process:\n\nsource\n\nbuild_index\n\n build_index (vs)\n\n\nvs = VectorStorage.load('data/headline_embeddings.json')\n\n\ncluster_ids_map, id_cluster_map, centroids = build_index(vs)",
+    "crumbs": [
+      "IVF Index: Making Vector Search Fast"
+    ]
+  },
+  {
+    "objectID": "ivf_index.html#the-ivfindex-class",
+    "href": "ivf_index.html#the-ivfindex-class",
+    "title": "IVF Index: Making Vector Search Fast",
+    "section": "The IVFIndex Class",
+    "text": "The IVFIndex Class\nNow we’ll build a complete index that: 1. Stores vectors and cluster assignments 2. Lets us search efficiently 3. Can add new vectors\nThe key parameters are: - nprobe: How many closest clusters to search (higher = more accurate but slower) - distance_fn: Which distance metric to use (cosine, euclidean, or dot)",
+    "crumbs": [
+      "IVF Index: Making Vector Search Fast"
+    ]
+  },
+  {
+    "objectID": "ivf_index.html#using-the-index",
+    "href": "ivf_index.html#using-the-index",
+    "title": "IVF Index: Making Vector Search Fast",
+    "section": "Using the Index",
+    "text": "Using the Index\nLet’s try our index on a real dataset of headline embeddings:\n\nThen we build the index from our storage(clustering the vectors)\nFinally, we search for similar headlines\n\nThe stats show us how vectors are distributed across clusters.\n\nsource\n\nIVFIndex\n\n IVFIndex (storage:minivecdb.vector_storage.VectorStorage, nprobe=10,\n           distance_fn='cosine')\n\nInitialize self. See help(type(self)) for accurate signature.\n\nindex = IVFIndex(vs, nprobe=10, distance_fn=\"cosine\")\nindex.build()\nindex.get_stats()\n\nAverage list size: 9.8, Max: 28\n\n\n{'built': True,\n 'n_clusters': 39,\n 'n_vectors': 383,\n 'avg_cluster_size': 9.820512820512821,\n 'min_cluster_size': 1,\n 'max_cluster_size': 28,\n 'empty_clusters': 0,\n 'nprobe': 10}\n\n\n\nquery = \"John Korir Claims Victory in Boston Marathon as Evans Lokedi Breaks Women's Course Record\"\nquery_vector = gen_emb.get_embedding(query)\nresults = index.search(query_vector, k=5)\nresults.itemgot(1)\n\n(#5) [{'headline': 'Marathon Runner Breaks World Record', 'genre': 'Sports'},{'headline': 'Sprinter Breaks National Record', 'genre': 'Sports'},{'headline': 'Climber Sets New Speed Record', 'genre': 'Sports'},{'headline': 'City Hosts Annual Marathon', 'genre': 'Local News'},{'headline': 'Track Star Qualifies for World Championships', 'genre': 'Sports'}]",
+    "crumbs": [
+      "IVF Index: Making Vector Search Fast"
+    ]
+  },
+  {
+    "objectID": "ivf_index.html#example-search-results",
+    "href": "ivf_index.html#example-search-results",
+    "title": "IVF Index: Making Vector Search Fast",
+    "section": "Example Search Results",
+    "text": "Example Search Results\nWhen we search with a query about marathons and records, we get highly relevant results from our headline dataset - all about sports records and running events.\nThis demonstrates how semantic search works - finding results based on meaning, not just keywords.",
+    "crumbs": [
+      "IVF Index: Making Vector Search Fast"
+    ]
+  },
+  {
+    "objectID": "ivf_index.html#adding-new-vectors",
+    "href": "ivf_index.html#adding-new-vectors",
+    "title": "IVF Index: Making Vector Search Fast",
+    "section": "Adding New Vectors",
+    "text": "Adding New Vectors\nThe index also allows adding new vectors. When adding: 1. We store the vectors in our VectorStorage 2. We rebuild the index to include these new vectors\nIn a production system, you might use more efficient approaches for updates.\n\nnews_headlines = fc.L(\"Dow Jumps 1,000 Points Tuesday as Markets Rebound from Recent Losses\", # Finance\n                  \"Ronald Acuña Jr. Weeks Away from Return Following Knee Surgery\", # Sports\n                  \"George Clooney Makes Broadway Debut Playing CBS News Legend Edward R. Murrow\" # Entertainment\n                )\n\n\nembeddings = news_headlines.map(lambda o: gen_emb.get_embedding(o))\n\n\nmetadata = [{\"headline\": news_headlines[0], \"genre\": \"finance\"}, \n            {\"headline\": news_headlines[1], \"genre\": \"sports\"}, \n            {\"headline\": news_headlines[2], \"genre\": \"entertainment\"}]\nindex.add_vectors_bulk(embeddings, metadata)\n\nstats = index.get_stats()\nprint(stats)\n\nAverage list size: 9.8, Max: 28\n{'built': True, 'n_clusters': 39, 'n_vectors': 383, 'avg_cluster_size': 9.820512820512821, 'min_cluster_size': 1, 'max_cluster_size': 28, 'empty_clusters': 0, 'nprobe': 10}\n\n\n\nindex.search(query_vector, k=100).itemgot(1).attrgot('headline')\n\n(#100) ['Marathon Runner Breaks World Record','Sprinter Breaks National Record','Climber Sets New Speed Record','City Hosts Annual Marathon','Track Star Qualifies for World Championships','Skier Wins World Championship','Pole Vaulter Sets New Record','Boxer Wins Title in Stunning Knockout','Triathlete Wins National Championship','Swimmer Sets New Olympic Record','Boxer Wins Title in Final Round','Diver Sets New Depth Record','Rowing Team Wins National Title','Skier Wins Gold in World Cup','Cricket Team Secures Historic Victory','Weightlifter Sets New Personal Best','Surfer Wins World Championship','Kayaker Navigates Record-Breaking Rapids','Rugby Team Wins International Tournament','Swimmer Breaks National Record'...]",
+    "crumbs": [
+      "IVF Index: Making Vector Search Fast"
+    ]
+  },
+  {
+    "objectID": "ivf_index.html#key-takeaways",
+    "href": "ivf_index.html#key-takeaways",
+    "title": "IVF Index: Making Vector Search Fast",
+    "section": "Key Takeaways",
+    "text": "Key Takeaways\nThe IVF Index gives us fast approximate nearest-neighbor search:\n\nSpeed: Only search a fraction of vectors\nAccuracy: Usually finds the same results as an exhaustive search\nTrade-offs: Control speed vs accuracy with nprobe\n\nThis approach scales well to larger datasets, making vector search practical for real applications.\nNext, see 02_gen_embeddings.ipynb to learn how we create vectors from text.",
+    "crumbs": [
+      "IVF Index: Making Vector Search Fast"
+    ]
+  },
+  {
+    "objectID": "vector_storage.html",
+    "href": "vector_storage.html",
+    "title": "Vector Storage",
+    "section": "",
+    "text": "Think of a vector database as a smart filing cabinet that can find similar items. Each “document” (like text, images, or audio) gets converted into a long list of numbers (a vector).\nSimilar documents have similar vectors, so we can find related content by looking for vectors that are close to each other in this mathematical space.\nOur VectorStorage class is the simplest form of this - it stores vectors and lets us: - Add new vectors with metadata (information about what the vector represents) - Get vectors by their ID - Delete vectors we don’t need anymore - Save and load our database",
+    "crumbs": [
+      "Vector Storage"
+    ]
+  },
+  {
+    "objectID": "vector_storage.html#what-is-a-vector-database",
+    "href": "vector_storage.html#what-is-a-vector-database",
+    "title": "Vector Storage",
+    "section": "",
+    "text": "Think of a vector database as a smart filing cabinet that can find similar items. Each “document” (like text, images, or audio) gets converted into a long list of numbers (a vector).\nSimilar documents have similar vectors, so we can find related content by looking for vectors that are close to each other in this mathematical space.\nOur VectorStorage class is the simplest form of this - it stores vectors and lets us: - Add new vectors with metadata (information about what the vector represents) - Get vectors by their ID - Delete vectors we don’t need anymore - Save and load our database",
+    "crumbs": [
+      "Vector Storage"
+    ]
+  },
+  {
+    "objectID": "vector_storage.html#the-vectorstorage-class",
+    "href": "vector_storage.html#the-vectorstorage-class",
+    "title": "Vector Storage",
+    "section": "The VectorStorage Class",
+    "text": "The VectorStorage Class\nThe VectorStorage class is the foundation of MiniVecDB. It’s designed to be simple yet effective.\nEach vector is stored with: - A unique numeric ID - The vector itself (a numpy array) - Metadata (any JSON-serializable information about what the vector represents)\nThink of it as a simple dictionary where the keys are IDs and the values are (vector, metadata) pairs.\nBelow is our complete VectorStorage class. I’ll explain each method after the code:\n\ninit: Sets up storage for vectors and metadata\nadd: Adds a new vector with metadata and returns its ID\nget: Retrieves a vector and its metadata by ID\ndelete: Removes a vector and its metadata\nget_all: Returns all vectors and metadata\nsave: Saves the database to a file\nload: Loads a database from a file\n\n\nsource\n\nVectorStorage\n\n VectorStorage (dimension)\n\nInitialize self. See help(type(self)) for accurate signature.",
+    "crumbs": [
+      "Vector Storage"
+    ]
+  },
+  {
+    "objectID": "vector_storage.html#detailed-method-explanations",
+    "href": "vector_storage.html#detailed-method-explanations",
+    "title": "Vector Storage",
+    "section": "Detailed Method Explanations",
+    "text": "Detailed Method Explanations\n\nThe add Method\nThe add method stores a new vector and its metadata. It: 1. Checks that the vector has the correct dimension 2. Assigns a unique ID 3. Stores the vector and metadata 4. Returns the ID so you can reference this vector later\n\n\nThe get and delete Methods\nThe get method retrieves a vector and its metadata using the ID.\nThe delete method removes a vector and its metadata from storage.\nBoth methods are straightforward but essential for managing your vector database.\n\n\nSaving and Loading Storage\nOne key feature of VectorStorage is persistence - the ability to save your database to disk and load it back later.\nThe save method converts all vectors and metadata to a JSON-serializable format and writes to a file.\nThe load method recreates a VectorStorage object from a saved file, converting the loaded data back into the right formats (like numpy arrays).\nThis means you can build your vector database once and reuse it across multiple sessions or applications.\n\nstorage = VectorStorage(dimension=768)\n\nvector1 = np.random.randn(768)\nvector2 = np.random.randn(768)\nid1 = storage.add(vector1, {\"title\": \"Item 1\"})\nid2 = storage.add(vector2, {\"title\": \"Item 2\"})\n\nvector, metadata = storage.get(id1)\n\nstorage.delete(id2)\n\nstorage.save(\"data/my_vectors.json\")\n\nloaded_storage = VectorStorage.load(\"data/my_vectors.json\")\nlen(loaded_storage.get_all())\n\n1\n\n\nThis example shows a complete workflow: 1. Create a new storage for 768-dimensional vectors 2. Add two vectors with simple metadata 3. Retrieve a vector and its metadata 4. Delete a vector 5. Save the storage to disk 6. Load the storage from disk\nThis is a very simple demonstration. In a real application, you might store thousands or millions of vectors representing documents, images, or other data.\nNext Steps: - Look at 01_ivf_index.ipynb to learn how to make searching more efficient - Look at 02_gen_embeddings.ipynb to see how to create vectors from text using Gemini - Look at 03_headline_embeddings.ipynb for a complete example application",
+    "crumbs": [
+      "Vector Storage"
+    ]
+  },
+  {
+    "objectID": "gen_embeddings.html",
+    "href": "gen_embeddings.html",
+    "title": "Generating Embeddings with Gemini",
+    "section": "",
+    "text": "First, we import the necessary libraries and set up our client.\nMake sure you have an API key for Gemini stored in your environment variables as ‘GEMINI_API_KEY’.\n\nsource\n\n\n\n get_embedding (contents, model='text-embedding-004')",
+    "crumbs": [
+      "Generating Embeddings with Gemini"
+    ]
+  },
+  {
+    "objectID": "gen_embeddings.html#setting-up-the-client",
+    "href": "gen_embeddings.html#setting-up-the-client",
+    "title": "Generating Embeddings with Gemini",
+    "section": "",
+    "text": "First, we import the necessary libraries and set up our client.\nMake sure you have an API key for Gemini stored in your environment variables as ‘GEMINI_API_KEY’.\n\nsource\n\n\n\n get_embedding (contents, model='text-embedding-004')",
+    "crumbs": [
+      "Generating Embeddings with Gemini"
+    ]
+  },
+  {
+    "objectID": "gen_embeddings.html#the-embedding-function",
+    "href": "gen_embeddings.html#the-embedding-function",
+    "title": "Generating Embeddings with Gemini",
+    "section": "The Embedding Function",
+    "text": "The Embedding Function\nOur get_embedding function: 1. Takes text content as input 2. Sends it to Gemini’s embedding API 3. Gets back a 768-dimensional vector 4. Returns it as a numpy array\nWe’re using the “SEMANTIC_SIMILARITY” task type, which optimizes the embeddings for finding related content.\nThe resulting vectors can be compared using cosine similarity or other distance metrics to find similar content.\n\nget_embedding(\"Dow Jumps 1,000 Points Tuesday as Markets Rebound from Recent Losses\").shape\n\n(768,)",
+    "crumbs": [
+      "Generating Embeddings with Gemini"
+    ]
+  },
+  {
+    "objectID": "gen_embeddings.html#testing-our-function",
+    "href": "gen_embeddings.html#testing-our-function",
+    "title": "Generating Embeddings with Gemini",
+    "section": "Testing Our Function",
+    "text": "Testing Our Function\nLet’s test with a simple headline. The resulting embedding is a 768-dimensional vector.\nEach dimension in this vector represents some aspect of the text’s meaning, learned by the model during training. The specific meaning of each dimension isn’t interpretable by humans, but the overall pattern of values captures the semantic content.\nWe can use these embeddings to: - Find similar content - Group related items - Build recommendation systems - Enable semantic search\nNext, see 03_headline_embeddings.ipynb for a complete example of using these embeddings.",
+    "crumbs": [
+      "Generating Embeddings with Gemini"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "",
+    "text": "This file will become your README and also the index of your documentation.",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "index.html#whats-a-vector-database",
+    "href": "index.html#whats-a-vector-database",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "What’s a Vector Database?",
+    "text": "What’s a Vector Database?\nVector databases store and search embeddings - numerical representations of content that capture meaning and relationships. They enable:\n\nSemantic search: Find content based on meaning, not just keywords\nRecommendations: Suggest similar items\nClassification: Group related items together",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "index.html#visual-guide-to-vector-search",
+    "href": "index.html#visual-guide-to-vector-search",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "Visual Guide to Vector Search",
+    "text": "Visual Guide to Vector Search\n┌───────────────────────────────────────────────────────────────┐\n│                                                               │\n│  Text to Vector Embedding                                     │\n│                                                               │\n│  \"I love dogs\"  ──────┐                                       │\n│                       │                                       │\n│                       ▼                                       │\n│  ┌─────────────────────────────────────┐                      │\n│  │      Gemini Embedding Model         │                      │\n│  └─────────────────────────────────────┘                      │\n│                       │                                       │\n│                       ▼                                       │\n│  [0.021, -0.108, 0.324, ..., -0.021]  ◄── 768-dimensional     │\n│                                            vector             │\n│                                                               │\n└───────────────────────────────────────────────────────────────┘\n┌─────────────────────────────────────────────────────────────────┐\n│                                                                 │\n│  VectorStorage                                                  │\n│                                                                 │\n│  ┌─────────────┐     ┌────────────────────────────────────────┐ │\n│  │   Index     │     │            Vectors                     │ │\n│  ├─────────────┤     ├────────────────────────────────────────┤ │\n│  │      0      │ ──► │ [0.21, -0.11, 0.54, ..., 0.76]         │ │\n│  │      1      │ ──► │ [0.11, 0.36, -0.42, ..., -0.21]        │ │\n│  │      2      │ ──► │ [-0.33, 0.12, 0.91, ..., 0.05]         │ │\n│  └─────────────┘     └────────────────────────────────────────┘ │\n│                                                                 │\n│  ┌─────────────┐     ┌────────────────────────────────────────┐ │\n│  │   Index     │     │            Metadata                    │ │\n│  ├─────────────┤     ├────────────────────────────────────────┤ │\n│  │      0      │ ──► │ {\"headline\": \"Scientists Discover...\", │ │\n│  │             │     │  \"genre\": \"Science\"}                   │ │\n│  │      1      │ ──► │ {\"headline\": \"Tech Company Launches..\",│ │\n│  │             │     │  \"genre\": \"Technology\"}                │ │\n│  │      2      │ ──► │ {\"headline\": \"Stock Market Hits...\",   │ │\n│  │             │     │  \"genre\": \"Finance\"}                   │ │\n│  └─────────────┘     └────────────────────────────────────────┘ │\n│                                                                 │\n└─────────────────────────────────────────────────────────────────┘\n┌────────────────────────────────────────────────────────────────┐\n│                                                                │\n│  IVF Index - Inverted File Structure                           │\n│                                                                │\n│  Step 1: Cluster vectors using K-means                         │\n│                                                                │\n│    ●       ○                                                   │\n│     ●   ○    ○                    ● Cluster 0                  │\n│      ● ○                          ○ Cluster 1                  │\n│     ●   ○                         ◆ Cluster 2                  │\n│    ●       ○                                                   │\n│        ◆ ◆ ◆                                                   │\n│         ◆ ◆                                                    │\n│                                                                │\n│  Step 2: Create inverted lists                                 │\n│                                                                │\n│  ┌────────────┐    ┌───────────────────────────────────┐       │\n│  │  Cluster   │    │  Vector IDs in cluster            │       │\n│  ├────────────┤    ├───────────────────────────────────┤       │\n│  │     0      │ ─► │  24, 42, 57, 123, 189             │       │\n│  │     1      │ ─► │  7, 19, 76, 88, 152, 167          │       │\n│  │     2      │ ─► │  31, 45, 103, 127                 │       │\n│  └────────────┘    └───────────────────────────────────┘       │\n│                                                                │\n│  Step 3: During search, only examine vectors in closest        │\n│          clusters (nprobe=2)                                   │\n│                                                                │\n└────────────────────────────────────────────────────────────────┘\n┌────────────────────────────────────────────────────────────────┐\n│                                                                │\n│  Semantic Search Workflow                                      │\n│                                                                │\n│  1. Convert query to embedding                                 │\n│                                                                │\n│  \"Latest sports results\"  ────► [0.12, -0.43, ..., 0.21]       │\n│                                                                │\n│  2. Find nearest clusters (nprobe=2)                           │\n│                                                                │\n│       ●                                                        │\n│     ●   ●                                                      │\n│      ●X●           ◆ ◆       X = Query Vector                  │\n│     ●   ●           ◆ ◆      ● = Closest Cluster               │\n│       ●              ◆       ○ = Other Cluster                 │\n│                      ○ ○     ◆ = Other Cluster                 │\n│                     ○   ○                                      │\n│                      ○ ○                                       │\n│                                                                │\n│  3. Compare only with vectors in those clusters                │\n│                                                                │\n│  4. Return most similar results:                               │\n│     - \"Local Football Team Wins Championship\"                  │\n│     - \"Marathon Runner Breaks World Record\"                    │\n│                                                                │\n└────────────────────────────────────────────────────────────────┘\n┌────────────────────────────────────────────────────────────────┐\n│                                                                │\n│  MiniVecDB Project Flow                                        │\n│                                                                │\n│  ┌───────────────┐     ┌───────────────┐    ┌───────────────┐  │\n│  │   Text Data   │ ──► │   Embeddings  │ ─► │VectorStorage  │  │\n│  └───────────────┘     └───────────────┘    └───────────────┘  │\n│         │                      ▲                    │          │\n│         │                      │                    ▼          │\n│         │                      │              ┌───────────────┐│\n│         │                      │              │  IVF Index    ││\n│         ▼                      │              └───────────────┘│\n│  ┌───────────────┐             │                    │          │\n│  │ Search Query  │─────────────┘                    │          │\n│  └───────────────┘                                  │          │\n│         │                                           │          │\n│         │                                           ▼          │\n│         │                                    ┌───────────────┐ │\n│         └───────────────────────────────────►│   Results     │ │\n│                                              └───────────────┘ │\n│                                                                │\n└────────────────────────────────────────────────────────────────┘",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "index.html#features",
+    "href": "index.html#features",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "Features",
+    "text": "Features\n\nSimple storage layer: Store, retrieve, and manage vector embeddings with metadata\nFast search with IVF: Efficient approximate nearest neighbor search\nGemini API integration: Generate high-quality embeddings from text\nFlexible distance metrics: Choose between cosine, Euclidean, and dot product similarity",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "index.html#project-structure",
+    "href": "index.html#project-structure",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "Project Structure",
+    "text": "Project Structure\nThe project is organized into four main components:\n\nVectorStorage: The foundation for storing and managing vectors and metadata\nIVF Index: An efficient search index using clustering to accelerate queries\nEmbedding Generation: Utilities to create vector embeddings from text using Gemini\nSample Application: A news headline search demo",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "index.html#understanding-the-notebooks",
+    "href": "index.html#understanding-the-notebooks",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "Understanding the Notebooks",
+    "text": "Understanding the Notebooks\nEach notebook in this project explores a different aspect of vector databases:\n00_vector_storage.ipynb This notebook implements the core storage system for our MiniVecDB project. It introduces the concept of vector databases and demonstrates how to store, retrieve, and manage vector embeddings with metadata. The VectorStorage class handles basic operations like adding vectors, getting them by ID, deletion, and saving/loading the database to disk.\n01_ivf_index.ipynb This notebook builds on the storage layer to implement efficient search using the Inverted File (IVF) Index algorithm. It explains the challenge of searching through large vector collections and demonstrates how clustering vectors can dramatically improve search speed. The notebook covers different distance functions, K-means clustering, and searching with different parameters.\n02_gen_embeddings.ipynb This notebook sets up our connection to Google’s Gemini API for creating text embeddings. It explains what embeddings are, how they capture semantic meaning, and why they’re powerful for finding related content. The get_embedding function implemented here converts text to 768-dimensional vectors optimized for semantic similarity.\n03_headline_embeddings.ipynb This notebook applies everything from the previous notebooks to build a complete workflow. It processes a dataset of news headlines, converts them to embeddings using Gemini (with rate limiting considerations), and stores them for use with our IVF index. This preprocessing step creates the vector database that powers semantic search demonstrations.",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "index.html#getting-started",
+    "href": "index.html#getting-started",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "Getting Started",
+    "text": "Getting Started\n\nPrerequisites\n\nPython 3.9+\nNumPy\nFastCore\nGoogle Gemini API access\n\n\n\nInstallation\ngit clone https://github.com/yourusername/minivecdb.git\ncd minivecdb\npip install -e .",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "index.html#quick-example",
+    "href": "index.html#quick-example",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "Quick Example",
+    "text": "Quick Example\n\nfrom minivecdb.vector_storage import VectorStorage\nfrom minivecdb.ivf_index import IVFIndex\nfrom minivecdb.gen_emb import get_embedding\n\n# Create a storage for 768-dimensional vectors\nstorage = VectorStorage(768)\n\n# Add some vectors with metadata\nheadline = \"Scientists Discover New Species in Amazon\"\nvector = get_embedding(headline)\nstorage.add(vector, {\"headline\": headline, \"category\": \"science\"})\n\n# Add more vectors...\n\n# Create and build an index for faster search\nindex = IVFIndex(storage)\nindex.build()\n\n# Search for similar content\nquery = \"New biological discovery in rainforest\"\nquery_vector = get_embedding(query)\nresults = index.search(query_vector, k=5)\n\n# Display results\nfor vector, metadata in results:\n    print(metadata[\"headline\"])\n\nAverage list size: 1.0, Max: 1\nScientists Discover New Species in Amazon",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "index.html#how-it-works",
+    "href": "index.html#how-it-works",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "How It Works",
+    "text": "How It Works\n\nVector Storage\nThe VectorStorage class provides the foundational layer: - Stores vectors with unique IDs - Associates metadata with each vector - Persists data to disk using JSON\n\n\nIVF Indexing\nThe Inverted File (IVF) index accelerates search by: 1. Clustering similar vectors using K-means 2. Creating “inverted lists” mapping clusters to their vectors 3. During search, checking only the most promising clusters\nThis approach dramatically reduces the number of comparisons needed for large datasets.\n\n\nEmbedding Generation\nWe use Google’s Gemini API to convert text into 768-dimensional vectors that capture semantic meaning. Similar concepts produce similar vectors, enabling semantic search.",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "index.html#limitations",
+    "href": "index.html#limitations",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "Limitations",
+    "text": "Limitations\nThis is an educational implementation with some limitations: - Not optimized for very large datasets (millions of vectors) - Basic persistence mechanism using JSON - No automatic index updates (requires full rebuild) - No concurrent access support",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "index.html#license",
+    "href": "index.html#license",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "License",
+    "text": "License\nMIT",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "index.html#acknowledgments",
+    "href": "index.html#acknowledgments",
+    "title": "MiniVecDB: A Simple Vector Database in Python",
+    "section": "Acknowledgments",
+    "text": "Acknowledgments\n\nThe FastKMeans library for efficient clustering\nGoogle’s Gemini API for high-quality embeddings",
+    "crumbs": [
+      "MiniVecDB: A Simple Vector Database in Python"
+    ]
+  },
+  {
+    "objectID": "headline_embeddings.html",
+    "href": "headline_embeddings.html",
+    "title": "Preparing Headline Data",
+    "section": "",
+    "text": "import pandas as pd\nfrom minivecdb.vector_storage import VectorStorage\nfrom minivecdb import gen_emb\nfrom types import SimpleNamespace\nimport time\nimport fastcore.all as fc\ndf = pd.read_csv(\"data/random_headlines.csv\") # Data generated from Grok\ndf.head(), df.shape\n\n(                                            Headline          Genre\n 0  Scientists Discover New Species of Fish in Pac...        Science\n 1  Local Bakery Wins National Award for Best Croi...           Food\n 2         New Action Movie Breaks Box Office Records  Entertainment\n 3     City Council Approves New Park Renovation Plan     Local News\n 4               Tech Startup Secures $10M in Funding     Technology,\n (383, 2))",
+    "crumbs": [
+      "Preparing Headline Data"
+    ]
+  },
+  {
+    "objectID": "headline_embeddings.html#our-dataset",
+    "href": "headline_embeddings.html#our-dataset",
+    "title": "Preparing Headline Data",
+    "section": "Our Dataset",
+    "text": "Our Dataset\nWe’re working with a dataset of random news headlines across different genres. Each headline has: - The headline text - A genre label (like Science, Technology, Sports)\nThis will let us build a semantic search engine that understands the meaning of headlines.\n\ndef compute_emb(x):\n    headline, genre = x['Headline'], x['Genre']\n    vector = gen_emb.get_embedding(headline)\n    time.sleep(10)\n    return SimpleNamespace(vector=vector, metadata={'headline': headline, 'genre': genre})",
+    "crumbs": [
+      "Preparing Headline Data"
+    ]
+  },
+  {
+    "objectID": "headline_embeddings.html#creating-embeddings",
+    "href": "headline_embeddings.html#creating-embeddings",
+    "title": "Preparing Headline Data",
+    "section": "Creating Embeddings",
+    "text": "Creating Embeddings\nThe compute_emb function: 1. Takes a headline and its genre 2. Creates an embedding using our Gemini function 3. Adds a 10-second delay to respect API rate limits 4. Returns a SimpleNamespace object with the vector and metadata\nNote that the delay is important when working with external APIs - they often have limits on how quickly you can send requests.\n\nemb_obj = df.apply(compute_emb, axis=1)\nlen(emb_obj)",
+    "crumbs": [
+      "Preparing Headline Data"
+    ]
+  },
+  {
+    "objectID": "headline_embeddings.html#processing-all-headlines",
+    "href": "headline_embeddings.html#processing-all-headlines",
+    "title": "Preparing Headline Data",
+    "section": "Processing All Headlines",
+    "text": "Processing All Headlines\nWe apply our function to each headline in the dataset. This creates embeddings for all 383 headlines.\nThis is the most time-consuming part of the process (about an hour for this dataset) because: 1. Creating each embedding requires an API call 2. We add a 10-second delay between calls 3. We’re processing hundreds of headlines\n\nvs = VectorStorage(768)\nres = emb_obj.map(lambda o: vs.add(o.vector, o.metadata))\nlen(res)\n\n383",
+    "crumbs": [
+      "Preparing Headline Data"
+    ]
+  },
+  {
+    "objectID": "headline_embeddings.html#storing-our-embeddings",
+    "href": "headline_embeddings.html#storing-our-embeddings",
+    "title": "Preparing Headline Data",
+    "section": "Storing Our Embeddings",
+    "text": "Storing Our Embeddings\nNow we: 1. Create a VectorStorage for our 768-dimensional vectors 2. Add each embedding with its metadata (headline text and genre) 3. Save the complete storage to disk as a JSON file\nThis creates a searchable database of headline embeddings that we can load and use anytime without redoing the API calls.\n\nvs.save(\"data/headline_embeddings.json\")",
+    "crumbs": [
+      "Preparing Headline Data"
+    ]
+  }
+]
