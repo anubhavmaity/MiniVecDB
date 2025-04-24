@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "minivecdb"
+  site-url: "https://anubhavmaity.github.io/MiniVecDB"
+  description: "A lightweight vector database for learning and experimenting with similarity search algorithms."
+  repo-branch: main
+  repo-url: "https://github.com/anubhavmaity/MiniVecDB"

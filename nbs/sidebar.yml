@@ -1,0 +1,8 @@
+website:
+  sidebar:
+    contents:
+      - index.ipynb
+      - 00_vector_storage.ipynb
+      - 01_ivf_index.ipynb
+      - 02_gen_embeddings.ipynb
+      - 03_headline_embeddings.ipynb
