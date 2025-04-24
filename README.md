@@ -208,11 +208,11 @@ search demonstrations.
 git clone https://github.com/yourusername/minivecdb.git
 cd minivecdb
 pip install -e .
+```
 
 ## Quick Example
 
-::: {.cell execution_count=1}
-``` {.python .cell-code}
+``` python
 from minivecdb.vector_storage import VectorStorage
 from minivecdb.ivf_index import IVFIndex
 from minivecdb.gen_emb import get_embedding
@@ -241,14 +241,8 @@ for vector, metadata in results:
     print(metadata["headline"])
 ```
 
-<div class="cell-output cell-output-stdout">
-
     Average list size: 1.0, Max: 1
     Scientists Discover New Species in Amazon
-
-</div>
-
-:::
 
 ## How It Works
 
